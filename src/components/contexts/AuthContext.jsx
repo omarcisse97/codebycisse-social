@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { UpdatePassword } from '@supabase/auth-ui-react';
 
 const AuthContext = createContext();
 
@@ -175,11 +176,12 @@ export const AuthProvider = ({ children }) => {
           const tmptmpJSON = await registerResult.json();
           console.log('POST RESULT -> ', tmptmpJSON);
           if (tmptmpJSON?.success === true && tmptmpJSON?.data) {
+            await updateUserActiveInfo(true);
             dispatch({ type: 'SET_LOADING', payload: false });
             return tmptmpJSON.data;
           }
         } else {
-          const resultSetActive = await updateUserActiveInfo(tmpJSON?.data);
+          await updateUserActiveInfo(true);
           dispatch({ type: 'SET_LOADING', payload: false });
           return tmpJSON?.data;
         }
@@ -261,9 +263,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateUserActiveInfo = async (userData) => {
-    console.log('Current user data -> ', userData);
-    const registerResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${userData?.id}`, {
+  const updateUserActiveInfo = async (is_active) => {
+    
+    const registerResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${state.user?.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -271,7 +273,7 @@ export const AuthProvider = ({ children }) => {
       },
       body: JSON.stringify({
         data: {
-          is_active: userData.is_active === true? false : true
+          is_active: is_active
         }
       })
     });
@@ -295,7 +297,7 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       if (tempUserInfo) {
-        const updateResult = await updateUserActiveInfo(tempUserInfo);
+        await updateUserActiveInfo(false);
       }
 
     } catch (error) {
@@ -337,6 +339,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserData = async (obj) => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      if (!state.user || !state.userInfo || !state.user?.id) {
+        throw new Error('No user logged in');
+      }
+      const updateResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${state.user?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          api_key: import.meta.env.VITE_BACKEND_API_KEY
+        },
+        body: JSON.stringify({
+          data: {
+            ...obj
+          }
+        })
+      })
+        .then((response) => {
+          if (response.ok) return response.json();
+          return null;
+        })
+      if (!updateResult || (updateResult && (updateResult?.success !== true || !updateResult?.data || updateResult?.error !== ''))) {
+        throw new Error(`Failed to update user data =? ${updateResult?.error ? updateResult?.error : 'No error message retrieved'}`);
+      }
+      dispatch({ type: 'SET_USER_INFO', payload: updateResult?.data });
+      console.log('UPDATED USER. iNFO -> ', updateResult?.data);
+      dispatch({ type: 'SET_LOADING', payload: false });
+      toast.success('Successfully updated user');
+      return true;
+    } catch (error) {
+      console.error('Failed to update user data. Error(s): ', error);
+      dispatch({type: 'SET_LOADING', payload: false});
+      return false;
+    }
+  }
+
   const resetPassword = async (email) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
@@ -373,7 +412,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     signInWithGoogle,
     resetPassword,
-    registerEnhanced
+    registerEnhanced,
+    updateUserData
   };
 
   return (
