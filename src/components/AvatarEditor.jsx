@@ -11,25 +11,28 @@ import {
 } from '@heroicons/react/24/outline'
 import { useHabboAvatar } from './contexts/HabboAvatarContext'
 import { HabboAvatar } from './models/Avatar.js'
+import { useAuth } from './contexts/AuthContext.jsx'
 
 const AvatarEditor = ({ isOpen, onClose }) => {
   const { avatarAssets, avatar: contextAvatar, updateAvatar } = useHabboAvatar();
 
   // Use the HabboAvatar class from context
   const [workingAvatar, setWorkingAvatar] = useState(null);
-  const [activeMainTab, setActiveMainTab] = useState('body');
-  const [activeSubTab, setActiveSubTab] = useState('male');
+
   const [mainTabs, setMainTabs] = useState([]);
   const [subTabs, setSubTabs] = useState({});
   const [colorsTest, setColorsTest] = useState([]);
-  
+
   // Loading states
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [isLoadingColor, setIsLoadingColor] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [loadingColorKey, setLoadingColorKey] = useState(null);
+  const { userInfo } = useAuth();
+  const [activeMainTab, setActiveMainTab] = useState('body');
+  const [activeSubTab, setActiveSubTab] = useState(userInfo?.gender?.toUpperCase() === 'M' ? 'male' : 'female');
 
-  // Initialize working avatar when editor opens
+
   useEffect(() => {
     if (isOpen && contextAvatar) {
       // Create a copy to work with
@@ -39,13 +42,13 @@ const AvatarEditor = ({ isOpen, onClose }) => {
   }, [isOpen, contextAvatar]);
 
   useEffect(() => {
-    if (avatarAssets && avatarAssets._assetsIcons) {
+    if (avatarAssets && avatarAssets._assetsIcons && userInfo && userInfo?.gender) {
       setMainTabs([
         {
           id: 'body',
           name: 'Body',
           icon: avatarAssets._assetsIcons.body?.main || UserIcon,
-          subTabs: ['male', 'female']
+          subTabs: [userInfo?.gender === 'M' ? 'male' : 'female']
         },
         {
           id: 'hair',
@@ -67,7 +70,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
         }
       ]);
     }
-  }, [avatarAssets]);
+  }, [avatarAssets, userInfo]);
 
   useEffect(() => {
     if (avatarAssets && workingAvatar) {
@@ -76,7 +79,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
         const targetGender = gender || workingAvatar._gender;
         // console.log(`SET TYPE obj for "${habboCode}". dt ->  `, setType);
         // console.log('Palette for set -> ', setType.getPalette());
-       
+
 
         return {
           habboCode,
@@ -158,19 +161,10 @@ const AvatarEditor = ({ isOpen, onClose }) => {
     if (mainTabs.length > 0) {
       const currentTab = mainTabs.find(tab => tab.id === activeMainTab);
       if (currentTab && currentTab.subTabs.length > 0) {
-        if (currentTab.id === 'body') {
-          if (workingAvatar?._gender === 'M') {
-            setActiveSubTab(currentTab.subTabs[0]);
-          } else if (workingAvatar?._gender === 'F') {
-            setActiveSubTab(currentTab.subTabs[1]);
-          }
-        } else {
-          setActiveSubTab(currentTab.subTabs[0]);
-        }
-
+        setActiveSubTab(currentTab.subTabs[0]);
       }
     }
-  }, [activeMainTab, mainTabs]);
+  }, [activeMainTab, mainTabs, userInfo]);
 
   const updateAvatarPart = async (habboCode, setId, colorId = '') => {
     if (!workingAvatar || isLoadingAvatar) return;
@@ -184,12 +178,12 @@ const AvatarEditor = ({ isOpen, onClose }) => {
         // Create new avatar with new gender and rebuild subtabs
         const newAvatar = new HabboAvatar(setId);
         setWorkingAvatar(newAvatar);
-        
+
         // Wait for avatar image to potentially load
         await new Promise(resolve => setTimeout(resolve, 300));
         return;
       }
-      
+
       if (workingAvatar._figure[habboCode]) {
         // Create new figure object to trigger re-render
         const tmp = avatarAssets?.getSetType(habboCode).getPalette(setId);
@@ -200,7 +194,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
         newFigure[habboCode] = { ...newFigure[habboCode], set: setId, color: colorId };
         const newAvatar = new HabboAvatar(workingAvatar._gender, newFigure);
         setWorkingAvatar(newAvatar);
-        
+
         // Wait for avatar image to potentially load
         await new Promise(resolve => setTimeout(resolve, 300));
       }
@@ -232,7 +226,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
       newFigure[habboCode] = { ...newFigure[habboCode], color: newColorString };
       const newAvatar = new HabboAvatar(workingAvatar._gender, newFigure);
       setWorkingAvatar(newAvatar);
-      
+
       // Wait for avatar image to potentially load
       await new Promise(resolve => setTimeout(resolve, 200));
     } finally {
@@ -256,9 +250,9 @@ const AvatarEditor = ({ isOpen, onClose }) => {
   const handleSave = () => {
     if (workingAvatar) {
       console.log('Working avatar data to save -> ', workingAvatar);
-      try{
+      try {
         updateAvatar(workingAvatar);
-      } catch(error){
+      } catch (error) {
         console.error('Failed to save avatar. Error(s): ', error);
       }
     }
@@ -279,7 +273,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         )}
-        
+
         <img
           src={imageUrl}
           alt="Avatar Preview"
@@ -334,13 +328,12 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                     key={tab.id}
                     onClick={() => setActiveMainTab(tab.id)}
                     disabled={isLoadingAvatar || isLoadingColor}
-                    className={`flex-shrink-0 mx-1 px-4 py-2 rounded-xl transition-all duration-200 ${
-                      isLoadingAvatar || isLoadingColor
+                    className={`flex-shrink-0 mx-1 px-4 py-2 rounded-xl transition-all duration-200 ${isLoadingAvatar || isLoadingColor
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
-                    } ${activeMainTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      } ${activeMainTab === tab.id
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                       }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -363,13 +356,12 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                   key={subTab}
                   onClick={() => setActiveSubTab(subTab)}
                   disabled={isLoadingAvatar || isLoadingColor}
-                  className={`flex-shrink-0 mx-1 px-3 py-2 rounded-xl transition-all duration-200 text-sm ${
-                    isLoadingAvatar || isLoadingColor
+                  className={`flex-shrink-0 mx-1 px-3 py-2 rounded-xl transition-all duration-200 text-sm ${isLoadingAvatar || isLoadingColor
                       ? 'opacity-50 cursor-not-allowed'
                       : ''
-                  } ${activeSubTab === subTab
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    } ${activeSubTab === subTab
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : 'text-gray-600 hover:bg-gray-100'
                     }`}
                 >
                   {subTabs[subTab]?.name}
@@ -389,13 +381,12 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                     key={tab.id}
                     onClick={() => setActiveMainTab(tab.id)}
                     disabled={isLoadingAvatar || isLoadingColor}
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                      isLoadingAvatar || isLoadingColor
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 ${isLoadingAvatar || isLoadingColor
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
-                    } ${activeMainTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-110'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                      } ${activeMainTab === tab.id
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-110'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
                       }`}
                     title={tab.name}
                   >
@@ -428,13 +419,12 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                       setActiveSubTab(subTab);
                     }}
                     disabled={isLoadingAvatar || isLoadingColor}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center space-x-3 ${
-                      isLoadingAvatar || isLoadingColor
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center space-x-3 ${isLoadingAvatar || isLoadingColor
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
-                    } ${activeSubTab === subTab
-                      ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border border-blue-200'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      } ${activeSubTab === subTab
+                        ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border border-blue-200'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                       }`}
                   >
                     {subTabs[subTab]?.image ? (
@@ -482,7 +472,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                           const isSelected = currentSubTab.isGender
                             ? selectedSetId === currentSubTab.gender
                             : selectedSetId === option.id;
-                          
+
                           const isLoadingThis = isLoadingAvatar && loadingItemId === option.id;
                           const figureForPreview = `${currentSubTab.habboCode}-${option.id}`;
 
@@ -493,13 +483,12 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                                 updateAvatarPart(currentSubTab.habboCode, option.id);
                               }}
                               disabled={isLoadingAvatar || isLoadingColor}
-                              className={`w-full aspect-square rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center space-y-1 sm:space-y-2 p-2 relative ${
-                                isLoadingAvatar || isLoadingColor
+                              className={`w-full aspect-square rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center space-y-1 sm:space-y-2 p-2 relative ${isLoadingAvatar || isLoadingColor
                                   ? 'opacity-50 cursor-not-allowed'
                                   : ''
-                              } ${isSelected
-                                ? 'border-blue-500 bg-gradient-to-b from-blue-50 to-blue-100 shadow-lg transform scale-105'
-                                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md hover:scale-102'
+                                } ${isSelected
+                                  ? 'border-blue-500 bg-gradient-to-b from-blue-50 to-blue-100 shadow-lg transform scale-105'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md hover:scale-102'
                                 }`}
                             >
                               {/* Loading spinner for individual item */}
@@ -508,9 +497,9 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                                 </div>
                               )}
-                              
+
                               <img
-                                src={`https://www.habbo.com/habbo-imaging/avatarimage?headonly=${activeMainTab === 'hair' || activeMainTab === 'body'?'1':'0' }&direction=2&head_direction=2&gender=${currentSubTab.isGender ? currentSubTab.gender : workingAvatar._gender}&figure=${figureForPreview}`}
+                                src={`https://www.habbo.com/habbo-imaging/avatarimage?headonly=${activeMainTab === 'hair' || activeMainTab === 'body' ? '1' : '0'}&direction=2&head_direction=2&gender=${currentSubTab.isGender ? currentSubTab.gender : workingAvatar._gender}&figure=${figureForPreview}`}
                                 alt={option.name}
                                 className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 object-contain"
                                 onError={(e) => {
@@ -553,17 +542,16 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                             {Object.entries(palette?._colors || {}).map(([colorId, color]) => {
                               const colorKey = `${index}-${colorId}`;
                               const isLoadingThisColor = isLoadingColor && loadingColorKey === colorKey;
-                              
+
                               return (
                                 <button
                                   key={colorId}
                                   onClick={() => updateAvatarColor(currentSubTab.habboCode, index, colorId)}
                                   disabled={isLoadingAvatar || isLoadingColor}
-                                  className={`aspect-square w-4 h-4 sm:w-5 sm:h-5 rounded border transition-all duration-200 relative ${
-                                    isLoadingAvatar || isLoadingColor
+                                  className={`aspect-square w-4 h-4 sm:w-5 sm:h-5 rounded border transition-all duration-200 relative ${isLoadingAvatar || isLoadingColor
                                       ? 'opacity-50 cursor-not-allowed'
                                       : ''
-                                  } ${currentLayerColor === colorId
+                                    } ${currentLayerColor === colorId
                                       ? 'border-gray-800 shadow-md transform scale-125'
                                       : 'border-gray-300 hover:border-gray-400 hover:scale-110'
                                     }`}
@@ -576,7 +564,7 @@ const AvatarEditor = ({ isOpen, onClose }) => {
                                       <div className="animate-spin rounded-full h-2 w-2 border border-gray-600 border-b-transparent"></div>
                                     </div>
                                   )}
-                                  
+
                                   {currentLayerColor === colorId && (
                                     <div className="absolute inset-0 rounded border border-white"></div>
                                   )}
@@ -599,22 +587,20 @@ const AvatarEditor = ({ isOpen, onClose }) => {
           <button
             onClick={onClose}
             disabled={isLoadingAvatar || isLoadingColor}
-            className={`px-6 sm:px-8 py-2.5 sm:py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold transition-all duration-200 text-sm sm:text-base ${
-              isLoadingAvatar || isLoadingColor
+            className={`px-6 sm:px-8 py-2.5 sm:py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold transition-all duration-200 text-sm sm:text-base ${isLoadingAvatar || isLoadingColor
                 ? 'opacity-50 cursor-not-allowed'
                 : 'hover:bg-gray-100 hover:border-gray-400'
-            }`}
+              }`}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isLoadingAvatar || isLoadingColor}
-            className={`px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg text-sm sm:text-base ${
-              isLoadingAvatar || isLoadingColor
+            className={`px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg text-sm sm:text-base ${isLoadingAvatar || isLoadingColor
                 ? 'opacity-50 cursor-not-allowed'
                 : 'hover:from-blue-700 hover:to-purple-700'
-            }`}
+              }`}
           >
             <CheckIcon className="h-4 w-4 sm:h-5 sm:w-5" />
             <span>Save Avatar</span>
