@@ -13,25 +13,12 @@ import { useAuth } from '../components/contexts/AuthContext';
 import { useHabboAvatar } from '../components/contexts/HabboAvatarContext';
 import { HabboAvatar } from '../components/models/Avatar';
 
-const Home = ({ user }) => {
+const Home = () => {
   const [newPost, setNewPost] = useState('')
   const { userInfo } = useAuth();
   const { avatar } = useHabboAvatar();
   // Default avatar for user
-  const userAvatar = user.avatar || {
-    skinColor: '#F4A460',
-    hair: 'short',
-    hairColor: '#8B4513',
-    eyes: 'normal',
-    eyeColor: '#4169E1',
-    shirt: 'tshirt',
-    shirtColor: '#FF6B6B',
-    pants: 'jeans',
-    pantsColor: '#4ECDC4',
-    shoes: 'sneakers',
-    shoeColor: '#FFFFFF',
-    accessory: 'none'
-  }
+  
 
 
   const AvatarDisplay = ({ _avatar, size = 'medium', headOnly = 'false' }) => {
