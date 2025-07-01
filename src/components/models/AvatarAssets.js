@@ -9,7 +9,7 @@ export class HabboAvatarColor {
         this._hex = hex;
 
     }
-    
+
 }
 export class HabboAvatarPalette {
     constructor(id) {
@@ -43,7 +43,7 @@ export class HabboAvatarSet {
         this._selectedColorPerPart = [];
 
     }
-    
+
     addPart(id, type, colorable, index, colorindex) {
         this._parts[id] = new HabboAvatarPart(id, type, colorable, index, colorindex);
         if (Object.keys(this._parts).length > 1) {
@@ -74,7 +74,7 @@ export class HabboAvatarSet {
                 return this._id;
             }
             let retVal = `${this._id}`;
-            for(let i = 0; i < this._selectedColorPerPart.length; i++){
+            for (let i = 0; i < this._selectedColorPerPart.length; i++) {
                 retVal = `${retVal}-${this._selectedColorPerPart._id}`;
             }
             return retVal;
@@ -98,14 +98,14 @@ export class HabboAvatarSetType {
         this._palette = null;
 
     }
-    
+
     addSet(id, gender, club, colorable, preselectable, selectable) {
         this._sets[id] = new HabboAvatarSet(id, gender, club, colorable, preselectable, selectable);
     }
     fetchPalette(palettesData) {
         try {
             if (!this._paletteid) {
-                throw new error('Palette id not set up');
+                throw new Error('Palette id not set up');
             }
 
             if (!palettesData || !palettesData[this._paletteid]) {
@@ -159,12 +159,12 @@ export class HabboAvatarSetType {
             }
             const retVal = [];
             for (const id in this._sets) {
-                if(gender !== this._sets[id]._gender && this._sets[id]._gender !== 'U'){
+                if (gender !== this._sets[id]._gender && this._sets[id]._gender !== 'U') {
                     console.log(`Ignoring gender "${this._sets[id]._gender}" since we're working with ${gender}`)
                     continue;
                 }
-                const temp = { id: id, name: id, preview: this._sets[id].preview()};
-                retVal.push({...temp});
+                const temp = { id: id, name: id, preview: this._sets[id].preview() };
+                retVal.push({ ...temp });
             }
             return retVal;
 
@@ -176,11 +176,12 @@ export class HabboAvatarSetType {
 
 }
 export class HabboAvatarAssets {
-    constructor() {
+    constructor(gender = 'M') {
         this._storageJSON = habboAssets() || null;
         this._palettes = {};
         this._setTypes = {};
         this._assetsIcons = {};
+        this._gender = gender;
     }
 
 
@@ -221,8 +222,10 @@ export class HabboAvatarAssets {
                     setType['@_mand_f_0'],
                     setType['@_mand_f_1']
                 );
+                
                 setType?.set?.map((set) => {
-                    temp?.addSet(
+                    if (set['@_gender']?.toLowerCase() === this._gender?.toLowerCase() || set['@_gender']?.toLowerCase() === 'u' ) {
+                        temp?.addSet(
                         set['@_id'],
                         set['@_gender'],
                         set['@_club'],
@@ -249,6 +252,7 @@ export class HabboAvatarAssets {
                             part['@_index'],
                             part['@_colorindex']
                         );
+                    }
                     }
 
                 });
