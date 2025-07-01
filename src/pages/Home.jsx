@@ -167,8 +167,8 @@ const Home = ({ user }) => {
     const post = {
       id: Date.now(),
       author: {
-        username: user.username,
-        name: user.username,
+        username: userInfo?.username,
+        name: userInfo.full_name,
         avatar: avatar,
         verified: false
       },
@@ -208,7 +208,7 @@ const Home = ({ user }) => {
               <textarea
                 value={newPost}
                 onChange={(e) => setNewPost(e.target.value)}
-                placeholder="What's on your mind, Omar?"
+                placeholder={`What's on your mind, ${userInfo?.full_name}?`}
                 className="w-full p-3 sm:p-4 text-base sm:text-lg placeholder-gray-500 border-none resize-none focus:outline-none"
                 rows="3"
               />
