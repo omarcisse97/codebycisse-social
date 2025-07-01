@@ -74,8 +74,7 @@ export const HabboAvatarProvider = ({ children }) => {
                 throw new Error('User already has an avatar created. Aborting...');
             }
             dispatch({ type: 'SET_LOADING', payload: true });
-            const possibleGenders = ['M', 'F'];
-            const defaultAvatar = preBuilt && preBuilt?._gender && preBuilt?._figure ? preBuilt : new HabboAvatar(possibleGenders[Math.round(Math.random())]);
+            const defaultAvatar = preBuilt && preBuilt?._gender && preBuilt?._figure ? preBuilt : new HabboAvatar('M');
             if (!defaultAvatar || !defaultAvatar._figure || !defaultAvatar._gender) {
                 throw new Error('Failed to generate default avatar');
             }
