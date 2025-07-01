@@ -26,8 +26,11 @@ export const HabboAvatarProvider = ({ children }) => {
     const { user, userInfo } = useAuth();
 
     useEffect(() => {
-        initializeAvatarAssetsSets();
-    }, []);
+        if(userInfo && userInfo?.gender){
+            initializeAvatarAssetsSets();
+        }
+        
+    }, [userInfo]);
     useEffect(() => {
         if (state.avatarAssets && !state.avatar && userInfo) {
             initializeAvatar();
@@ -74,7 +77,7 @@ export const HabboAvatarProvider = ({ children }) => {
                 throw new Error('User already has an avatar created. Aborting...');
             }
             dispatch({ type: 'SET_LOADING', payload: true });
-            const defaultAvatar = preBuilt && preBuilt?._gender && preBuilt?._figure ? preBuilt : new HabboAvatar('M');
+            const defaultAvatar = preBuilt && preBuilt?._gender && preBuilt?._figure ? preBuilt : new HabboAvatar(userInfo?.gender);
             if (!defaultAvatar || !defaultAvatar._figure || !defaultAvatar._gender) {
                 throw new Error('Failed to generate default avatar');
             }
@@ -117,7 +120,9 @@ export const HabboAvatarProvider = ({ children }) => {
                 throw new Error('Failed to fetch avatar for user');
             }
             if (Object.keys(savedAvatarSchema).length < 1) {
-                
+                if(!userInfo || !userInfo?.gender){
+                    throw new Error('Failed to obtain user info');
+                }
                 savedAvatarSchema = await createAvatarSchema();
                 if (!savedAvatarSchema) {
                     throw new Error('Failed to create new avatar for user');
@@ -144,7 +149,7 @@ export const HabboAvatarProvider = ({ children }) => {
     }
     const initializeAvatarAssetsSets = () => {
         dispatch({ type: 'SET_LOADING', payload: true });
-        const temp = new HabboAvatarAssets();
+        const temp = new HabboAvatarAssets(userInfo?.gender);
         temp.init();
         temp.initPalettes();
         dispatch({ type: 'SET_AVATAR_ASSETS', payload: temp });
