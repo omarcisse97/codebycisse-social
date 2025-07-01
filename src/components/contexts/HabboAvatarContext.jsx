@@ -29,11 +29,11 @@ export const HabboAvatarProvider = ({ children }) => {
         initializeAvatarAssetsSets();
     }, []);
     useEffect(() => {
-        if (state.avatarAssets && !state.avatar) {
+        if (state.avatarAssets && !state.avatar && userInfo) {
             initializeAvatar();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.avatarAssets]);
+    }, [state.avatarAssets, userInfo]);
 
     const fetchAvatarByUserID = async () => {
         try {
