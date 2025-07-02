@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext';
 import { useHabboAvatar } from './contexts/HabboAvatarContext';
 import UserSettings from './UserSettings';
+import SearchUserDropdown from './SearchUserDropdown';
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -22,19 +23,18 @@ import {
 const Navbar = () => {
   const { userInfo } = useAuth();
   const { logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
   const { avatar } = useHabboAvatar();
   const location = useLocation()
+  const navigate = useNavigate()
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
   const isActive = (path) => location.pathname === path
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      // TODO: Implement search functionality
-      console.log('Searching for:', searchQuery)
-    }
+  const handleUserSelect = (user) => {
+    // Navigate to user's profile when selected
+    navigate(`/profile/${user.id}`);
+    setShowMobileSearch(false); // Close mobile search if open
   }
 
   const navItems = [
@@ -76,22 +76,14 @@ const Navbar = () => {
 
             {/* Search Bar - Hidden on mobile */}
             <div className="hidden md:flex flex-1 max-w-lg mx-8">
-              <form onSubmit={handleSearch} className="relative w-full">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search people, posts..."
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
-                />
-              </form>
+              <SearchUserDropdown onUserSelect={handleUserSelect} />
             </div>
 
             {/* Mobile Search Button */}
-            <button className="md:hidden p-3 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={() => setShowMobileSearch(true)}
+              className="md:hidden p-3 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-colors"
+            >
               <MagnifyingGlassIcon className="h-6 w-6" />
             </button>
 
@@ -121,8 +113,6 @@ const Navbar = () => {
                 )
               })}
 
-
-
               {/* User Menu */}
               <div className="relative ml-2">
                 <button
@@ -137,14 +127,13 @@ const Navbar = () => {
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.parentNode.innerHTML = `
-        <div class="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-          <span class="text-white font-semibold text-sm">${userInfo.username.charAt(0).toUpperCase()}</span>
-        </div>
-      `;
+                          <div class="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                            <span class="text-white font-semibold text-sm">${userInfo.username.charAt(0).toUpperCase()}</span>
+                          </div>
+                        `;
                       }}
                     />
                   </div>
-
                 </button>
 
                 {/* Dropdown Menu */}
@@ -163,13 +152,13 @@ const Navbar = () => {
                     </Link>
                     <button
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => { setIsUserSettingsOpen(true) }}
+                      onClick={() => { 
+                        setIsUserSettingsOpen(true);
+                        setShowUserMenu(false);
+                      }}
                     >
                       Settings
                     </button>
-                    {/* <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    Help
-                  </a> */}
                     <div className="border-t border-gray-100 mt-2">
                       <button
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -180,12 +169,39 @@ const Navbar = () => {
                     </div>
                   </div>
                 )}
-
               </div>
             </div>
           </div>
         </div>
       </nav>
+
+      {/* Mobile Search Modal */}
+      {showMobileSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden">
+          <div className="bg-white h-full">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Search</h2>
+              <button
+                onClick={() => setShowMobileSearch(false)}
+                className="p-2 rounded-full hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <SearchUserDropdown 
+                onUserSelect={(user) => {
+                  handleUserSelect(user);
+                  setShowMobileSearch(false);
+                }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <UserSettings
         isOpen={isUserSettingsOpen}
         onClose={() => setIsUserSettingsOpen(false)}
