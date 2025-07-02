@@ -82,7 +82,8 @@ class UserProfile {
                         if (Object.keys(avatarData?.data).length < 1) {
                             throw new Error(`No avatar found with id "${user_id}"`);
                         }
-                        this._avatar = new HabboAvatar(avatarData.data.gender, avatarData.data.figure);
+                        this._avatar = new HabboAvatar(avatarData.data.gender);
+                        this._avatar.setFigureFromString(avatarData.data.figure);
                         this._myProfile = false;
                     } catch (error) {
                         console.error(error);
