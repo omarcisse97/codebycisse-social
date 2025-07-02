@@ -17,6 +17,7 @@ const Profile = () => {
 
   // Determine if this is the current user's profile
   const isOwnProfile = !user_id || user_id === userInfo?.id
+  
 
   useEffect(() => {
     const initializeProfile = async () => {
