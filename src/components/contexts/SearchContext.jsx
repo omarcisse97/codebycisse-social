@@ -28,10 +28,11 @@ export const SearchProvider = ({ children }) => {
             if (!user_id) {
                 throw new Error('User ID cannot be null');
             }
-            const result = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars/${user_id}`, {
+            const result = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars`, {
                 method: 'GET',
                 headers: {
-                    api_key: import.meta.env.VITE_BACKEND_API_KEY
+                    api_key: import.meta.env.VITE_BACKEND_API_KEY,
+                    clause: `user_id=${user_id}`
                 },
             })
                 .then((response) => {
@@ -58,11 +59,14 @@ export const SearchProvider = ({ children }) => {
     const searchUsers = async (q = '', limit = '20') => {
         try {
             dispatch({ type: 'SET_LOADING', payload: true });
-            const result = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/search/users/${limit}`, {
+            const result = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users`, {
                 method: 'GET',
                 headers: {
                     api_key: import.meta.env.VITE_BACKEND_API_KEY,
-                    q: q
+                    q: q,
+                    limit: limit,
+                    search: true,
+                    searchFor: ['username', 'full_name']
                 },
             })
                 .then((response) => {

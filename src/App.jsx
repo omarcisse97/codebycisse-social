@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { HabboAvatarProvider } from './components/contexts/HabboAvatarContext'
 import { SearchProvider } from './components/contexts/SearchContext'
+import { SocketProvider } from './components/contexts/SocketContext'
 import './App.css'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
@@ -29,6 +30,7 @@ function App() {
   useEffect(() => {
     if (user && userInfo) {
       if (!userInfo?.gender || userInfo?.gender === '') {
+        console.log('Cannot find user gender. Info -> ', userInfo);
         setShowGenderSelectionModal(true);
       } else {
         setShowGenderSelectionModal(false);
@@ -47,40 +49,42 @@ function App() {
 
   return (
     <HabboAvatarProvider>
-      <SearchProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <div className="min-h-screen bg-gray-50">
-            {isAuthenticated && <Navbar />}
-            <main className={isAuthenticated ? "pt-16" : ""}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/verify-email" element={<EmailVerification />} />
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <Home />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/:user_id?"
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="*"
-                  element={<Navigate to={isAuthenticated ? "/" : "/login"} />}
-                />
-              </Routes>
-            </main>
-          </div>
-        </Router>
-      </SearchProvider>
+      <SocketProvider>
+        <SearchProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <div className="min-h-screen bg-gray-50">
+              {isAuthenticated && <Navbar />}
+              <main className={isAuthenticated ? "pt-16" : ""}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/verify-email" element={<EmailVerification />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Home />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile/:user_id?"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="*"
+                    element={<Navigate to={isAuthenticated ? "/" : "/login"} />}
+                  />
+                </Routes>
+              </main>
+            </div>
+          </Router>
+        </SearchProvider>
+      </SocketProvider>
     </HabboAvatarProvider>
   )
 }

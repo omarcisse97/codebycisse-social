@@ -26,10 +26,10 @@ export const HabboAvatarProvider = ({ children }) => {
     const { user, userInfo } = useAuth();
 
     useEffect(() => {
-        if(userInfo && userInfo?.gender){
+        if (userInfo && userInfo?.gender) {
             initializeAvatarAssetsSets();
         }
-        
+
     }, [userInfo]);
     useEffect(() => {
         if (state.avatarAssets && !state.avatar && userInfo) {
@@ -41,23 +41,27 @@ export const HabboAvatarProvider = ({ children }) => {
     const fetchAvatarByUserID = async () => {
         try {
             dispatch({ type: 'SET_LOADING', payload: true });
+            console.log('Fetching new avatar');
             if (!user?.id || !userInfo.id) {
                 throw new Error('Unable to retrieve user id');
             }
             const user_id = userInfo?.id ? userInfo?.id : user?.id;
-            const tempAvatar = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars/${user_id}`, {
+            const tempAvatar = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars`, {
+                method: 'GET',
                 headers: {
-                    api_key: import.meta.env.VITE_BACKEND_API_KEY
-                },
-                method: 'GET'
+                    api_key: import.meta.env.VITE_BACKEND_API_KEY,
+                    clause: `user_id=${user_id}`
+                }
             })
                 .then((result) => {
                     if (result.ok) return result.json()
                     return null;
                 });
+            
             if (!tempAvatar || (tempAvatar && (tempAvatar?.success === false && tempAvatar.error !== ''))) {
                 throw new Error(`Issue occured when fetching the avatar data =? ${tempAvatar ? tempAvatar.error : ''}`);
             }
+            console.log('RESULT WHEN FETCHING AVATAR -> ', tempAvatar);
             dispatch({ type: 'SET_LOADING', payload: false });
             return tempAvatar?.data;
         } catch (error) {
@@ -86,14 +90,15 @@ export const HabboAvatarProvider = ({ children }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    api_key: import.meta.env.VITE_BACKEND_API_KEY
+                    api_key: import.meta.env.VITE_BACKEND_API_KEY,
+                    fields: 'user_id,figure,gender'
                 },
                 body: JSON.stringify({
-                    data: {
-                        user_id: userInfo?.id || user?.id,
-                        figure: defaultAvatar.getFigure(),
-                        gender: defaultAvatar._gender
-                    }
+                    push: [
+                        userInfo?.id || user?.id,
+                        defaultAvatar.getFigure(),
+                        defaultAvatar._gender
+                    ]
                 })
             })
                 .then((response) => {
@@ -120,7 +125,7 @@ export const HabboAvatarProvider = ({ children }) => {
                 throw new Error('Failed to fetch avatar for user');
             }
             if (Object.keys(savedAvatarSchema).length < 1) {
-                if(!userInfo || !userInfo?.gender){
+                if (!userInfo || !userInfo?.gender) {
                     throw new Error('Failed to obtain user info');
                 }
                 savedAvatarSchema = await createAvatarSchema();
@@ -165,27 +170,30 @@ export const HabboAvatarProvider = ({ children }) => {
             if (Object.keys(existing).length < 1) {
                 updateAction = createAvatarSchema(newAvatarClass);
             } else {
-                updateAction = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars/${userInfo?.id}`, {
+                updateAction = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        api_key: import.meta.env.VITE_BACKEND_API_KEY
+                        api_key: import.meta.env.VITE_BACKEND_API_KEY,
+                        clause: `user_id=${userInfo?.id}`
                     },
                     body: JSON.stringify({
-                        data: {
-                            gender: newAvatarClass._gender,
-                            figure: newAvatarClass?.getFigure()
+                        update: {
+                            data: {
+                                gender: newAvatarClass._gender,
+                                figure: newAvatarClass?.getFigure()
+                            }
                         }
                     })
-                    
-                })
-                .then((response) => {
-                    if(response.ok) return response.json();
-                    return null;
-                })
 
-                if(!updateAction || (updateAction && (updateAction?.success === false || updateAction?.error !== ''))){
-                    throw new Error(`Failed to update avatar in server =? ${updateAction?.error? updateAction?.error: 'No error message available' }`);
+                })
+                    .then((response) => {
+                        if (response.ok) return response.json();
+                        return null;
+                    })
+
+                if (!updateAction || (updateAction && (updateAction?.success === false || updateAction?.error !== ''))) {
+                    throw new Error(`Failed to update avatar in server =? ${updateAction?.error ? updateAction?.error : 'No error message available'}`);
                 }
                 console.log('UPDATE AVATAR RESULT -> ', updateAction);
             }
@@ -202,9 +210,9 @@ export const HabboAvatarProvider = ({ children }) => {
         try {
             dispatch({ type: 'SET_LOADING', payload: true });
 
-            
+
             const updateDB = await updateAvatarInDB(tmp);
-            if(updateDB === true){
+            if (updateDB === true) {
                 toast.success('Successfully saved avatar');
             } else {
                 toast.error('Failed to save avatar. All updates will be lost');

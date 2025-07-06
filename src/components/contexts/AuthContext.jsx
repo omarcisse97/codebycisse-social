@@ -8,6 +8,15 @@ const AuthContext = createContext();
 
 // Singleton Supabase client to prevent multiple instances
 let supabaseInstance = null;
+const fetchErrorMsg = (result) => {
+  return `Failed to retrieve data from server. Error(s): ${result?.error ? result?.error : 'No error message available'}`;
+}
+const isFetchValid = (result) => {
+  if (!result || (result && (!result?.data || result?.error !== ''))) {
+    return { isValid: false, error: fetchErrorMsg(result) };
+  }
+  return { isValid: true, error: '' };
+}
 
 const getSupabaseClient = () => {
   if (!supabaseInstance) {
@@ -81,8 +90,9 @@ export const AuthProvider = ({ children }) => {
         } else {
           if (session?.user) {
             const etc = await registerEnhanced(session?.user);
+            
             if (etc) {
-              console.log('ETC Retrieved successfully user data -> ', etc);
+              
               dispatch({ type: 'SET_USER_INFO', payload: etc });
             }
           }
@@ -92,13 +102,12 @@ export const AuthProvider = ({ children }) => {
         // Listen for auth changes
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            console.log('Auth state changed:', event, session);
+            
             dispatch({ type: 'SET_SESSION', payload: session });
 
             // Handle different auth events
             switch (event) {
               case 'SIGNED_IN':
-                toast.success('Successfully signed in!');
                 break;
               case 'SIGNED_OUT':
                 toast.success('Successfully signed out!');
@@ -117,7 +126,7 @@ export const AuthProvider = ({ children }) => {
         );
 
         subscription = authSubscription;
-        console.log('Supabase initialized successfully');
+        // console.log('Supabase initialized successfully');
 
       } catch (error) {
         console.error('Failed to initialize Supabase:', error);
@@ -141,52 +150,78 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      const tempUser = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${data?.id}`, {
+      const tempUserResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users`, {
         method: 'GET',
         headers: {
-          api_key: import.meta.env.VITE_BACKEND_API_KEY
+          clause: `id=${data?.id}`,
+          api_key: import.meta.env.VITE_BACKEND_API_KEY,
         }
-      });
-      const tmpJSON = await tempUser.json();
-      console.log('result api user -> ', tmpJSON);
-      if (tmpJSON?.data !== null && typeof tmpJSON?.data === 'object') {
-        if (Object.keys(tmpJSON?.data).length < 1) {
+      })
+        .then((result) => {
+          if (result.ok) return result.json();
+          return null;
+        });
+      if (isFetchValid(tempUserResult)?.isValid !== true) {
+        throw new Error(isFetchValid(tempUserResult)?.error);
+      }
+      let tempUser = tempUserResult?.data;
+      if (Array.isArray(tempUser)) {
+        if (tempUser?.length < 1) {
           const registerResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              api_key: import.meta.env.VITE_BACKEND_API_KEY
+              api_key: import.meta.env.VITE_BACKEND_API_KEY,
+              fields: 'id,email,full_name,bio,website,location,phone,birth_date,is_verified,is_private,is_active'
             },
+
             body: JSON.stringify({
-              data: {
-                id: data?.id,
-                email: data?.user_metadata?.email,
-                full_name: data?.user_metadata?.full_name,
-                bio: '',
-                website: '',
-                location: '',
-                phone: '',
-                birth_date: null,
-                is_verified: data?.user_metadata?.email_verified,
-                is_private: false,
-                is_active: true,
-              }
+              push: [
+                data?.id,
+                data?.user_metadata?.email,
+                data?.user_metadata?.full_name,
+                '',
+                '',
+                '',
+                '',
+                null,
+                data?.user_metadata?.email_verified,
+                false,
+                true
+              ]
             })
-          });
-          const tmptmpJSON = await registerResult.json();
-          console.log('POST RESULT -> ', tmptmpJSON);
-          if (tmptmpJSON?.success === true && tmptmpJSON?.data) {
-            await updateUserActiveInfo(true);
-            dispatch({ type: 'SET_LOADING', payload: false });
-            return tmptmpJSON.data;
+          })
+            .then((result) => {
+              if (result.ok) return result.json();
+              return null;
+            });
+          if (isFetchValid(registerResult)?.isValid !== true) {
+            throw new Error(isFetchValid(tempUserResult)?.error);
+          }
+          await updateUserActiveInfo(true);
+          tempUser = registerResult?.data;
+          if(Array.isArray(tempUser)){
+            if(tempUser?.length === 1){
+              tempUser = tempUser[0];
+            } else {
+              if(tempUser?.length > 1){
+                throw new Error('Server returned too much data');
+              }
+              tempUser = null;
+            }
           }
         } else {
-          await updateUserActiveInfo(true);
-          dispatch({ type: 'SET_LOADING', payload: false });
-          return tmpJSON?.data;
+          throw new Error('Server returned way too many data');
         }
       }
-      return null;
+
+      if(!tempUser){
+        throw new Error('Failed to register or retrieve user from server');
+      }
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return tempUser;
+
+
     } catch (error) {
       console.error('An error occured. Review errors: ', error);
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -247,7 +282,7 @@ export const AuthProvider = ({ children }) => {
       if (error) {
         throw error;
       }
-      console.log('Created a new user. Here is obj -> ', data?.user);
+      
       if (!data.user?.email_confirmed_at) {
         toast.info('Please check your email to confirm your account');
       }
@@ -264,21 +299,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserActiveInfo = async (is_active) => {
-    
-    const registerResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${state.user?.id}`, {
+
+    const registerResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        api_key: import.meta.env.VITE_BACKEND_API_KEY
+        api_key: import.meta.env.VITE_BACKEND_API_KEY,
+        clause: `id=${state.user?.id}`
       },
       body: JSON.stringify({
-        data: {
-          is_active: is_active
+        update: {
+          date: {
+            is_active: is_active
+          }
+
         }
       })
     });
-    const tmpJson = await registerResult.json();
-    console.log('UPDATE RESULT -> ', tmpJson);
+    await registerResult.json();
+    
     return registerResult && registerResult?.success === true ? true : false;
 
   }
@@ -345,15 +384,18 @@ export const AuthProvider = ({ children }) => {
       if (!state.user || !state.userInfo || !state.user?.id) {
         throw new Error('No user logged in');
       }
-      const updateResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${state.user?.id}`, {
+      const updateResult = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          api_key: import.meta.env.VITE_BACKEND_API_KEY
+          api_key: import.meta.env.VITE_BACKEND_API_KEY,
+          clause: `id=${state.user?.id}`
         },
         body: JSON.stringify({
-          data: {
-            ...obj
+          update: {
+            data: {
+              ...obj
+            }
           }
         })
       })
@@ -361,17 +403,17 @@ export const AuthProvider = ({ children }) => {
           if (response.ok) return response.json();
           return null;
         })
-      if (!updateResult || (updateResult && (updateResult?.success !== true || !updateResult?.data || updateResult?.error !== ''))) {
-        throw new Error(`Failed to update user data =? ${updateResult?.error ? updateResult?.error : 'No error message retrieved'}`);
+      console.log('Result update -> ', updateResult);
+      if (!updateResult || (updateResult && (updateResult?.success !== true || !updateResult?.data))) {
+        throw new Error(`Failed to update user data => ${updateResult?.error ? updateResult?.error : 'No error message retrieved'}`);
       }
       dispatch({ type: 'SET_USER_INFO', payload: updateResult?.data });
-      console.log('UPDATED USER. iNFO -> ', updateResult?.data);
       dispatch({ type: 'SET_LOADING', payload: false });
       toast.success('Successfully updated user');
       return true;
     } catch (error) {
       console.error('Failed to update user data. Error(s): ', error);
-      dispatch({type: 'SET_LOADING', payload: false});
+      dispatch({ type: 'SET_LOADING', payload: false });
       return false;
     }
   }

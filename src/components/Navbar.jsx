@@ -2,8 +2,14 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext';
 import { useHabboAvatar } from './contexts/HabboAvatarContext';
+import { useSocket } from './contexts/SocketContext';
 import UserSettings from './UserSettings';
 import SearchUserDropdown from './SearchUserDropdown';
+import { 
+  NotificationsDropdown, 
+  MessagesDropdown, 
+  FriendsDropdown 
+} from './NavSocial';
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -11,54 +17,73 @@ import {
   BellIcon,
   ChatBubbleLeftIcon,
   PlusIcon,
-  EllipsisHorizontalIcon
+  EllipsisHorizontalIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeIconSolid,
   UserIcon as UserIconSolid,
   BellIcon as BellIconSolid,
-  ChatBubbleLeftIcon as ChatBubbleLeftIconSolid
+  ChatBubbleLeftIcon as ChatBubbleLeftIconSolid,
+  UserGroupIcon as UserGroupIconSolid
 } from '@heroicons/react/24/solid'
 
 const Navbar = () => {
   const { userInfo } = useAuth();
   const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showMobileSearch, setShowMobileSearch] = useState(false)
+  const { unreadCountNotification, unreadCountMessages } = useSocket();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
   const { avatar } = useHabboAvatar();
-  const location = useLocation()
-  const navigate = useNavigate()
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
-  const isActive = (path) => location.pathname === path
+  const isActive = (path) => location.pathname === path;
 
   const handleUserSelect = (user) => {
     // Navigate to user's profile when selected
     navigate(`/profile/${user.id}`);
     setShowMobileSearch(false); // Close mobile search if open
-  }
+  };
+
+  const handleStartChat = (userId) => {
+    console.log('Starting chat with user:', userId);
+    // Navigate to chat page or open chat modal
+    navigate(`/chat/${userId}`);
+    setShowMessages(false);
+    setShowFriends(false);
+  };
 
   const navItems = [
     {
       name: 'Home',
       path: '/',
       icon: HomeIcon,
-      iconSolid: HomeIconSolid
+      iconSolid: HomeIconSolid,
+      isClickable: true
     },
     {
       name: 'Messages',
       path: '/messages',
       icon: ChatBubbleLeftIcon,
       iconSolid: ChatBubbleLeftIconSolid,
-      badge: 3
+      badge: unreadCountMessages > 0 ? unreadCountMessages : null,
+      isClickable: false, // This will open dropdown instead
+      onClick: () => setShowMessages(!showMessages)
     },
     {
       name: 'Notifications',
       path: '/notifications',
       icon: BellIcon,
       iconSolid: BellIconSolid,
-      badge: 12
+      badge: unreadCountNotification > 0 ? unreadCountNotification : null,
+      isClickable: false, // This will open dropdown instead
+      onClick: () => setShowNotifications(!showNotifications)
     }
-  ]
+  ];
 
   return (
     <>
@@ -90,28 +115,85 @@ const Navbar = () => {
             {/* Navigation Items */}
             <div className="flex items-center space-x-1">
               {navItems.map((item) => {
-                const active = isActive(item.path)
-                const Icon = active ? item.iconSolid : item.icon
+                const active = isActive(item.path);
+                const Icon = active ? item.iconSolid : item.icon;
 
+                // For clickable items (like Home), render as Link
+                if (item.isClickable) {
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      className={`relative p-2 sm:p-3 rounded-xl transition-all duration-200 ${active
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        }`}
+                      title={item.name}
+                    >
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                      {item.badge && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-medium text-[10px] sm:text-xs">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                }
+
+                // For dropdown items (Messages, Notifications), render as button
                 return (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    className={`relative p-2 sm:p-3 rounded-xl transition-all duration-200 ${active
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                      }`}
-                    title={item.name}
-                  >
-                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                    {item.badge && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-medium text-[10px] sm:text-xs">
-                        {item.badge > 9 ? '9+' : item.badge}
-                      </span>
+                  <div key={item.name} className="relative">
+                    <button
+                      onClick={item.onClick}
+                      className={`relative p-2 sm:p-3 rounded-xl transition-all duration-200 ${active
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        }`}
+                      title={item.name}
+                    >
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                      {item.badge && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-medium text-[10px] sm:text-xs">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Render appropriate dropdown */}
+                    {item.name === 'Notifications' && (
+                      <NotificationsDropdown 
+                        isOpen={showNotifications} 
+                        onClose={() => setShowNotifications(false)} 
+                      />
                     )}
-                  </Link>
-                )
+                    
+                    {item.name === 'Messages' && (
+                      <MessagesDropdown 
+                        isOpen={showMessages} 
+                        onClose={() => setShowMessages(false)}
+                        onStartChat={handleStartChat}
+                      />
+                    )}
+                  </div>
+                );
               })}
+
+              {/* Friends/People Button */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowFriends(!showFriends)}
+                  className="relative p-2 sm:p-3 rounded-xl transition-all duration-200 text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                  title="People"
+                >
+                  <UserGroupIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                </button>
+                
+                <FriendsDropdown 
+                  isOpen={showFriends} 
+                  onClose={() => setShowFriends(false)}
+                  onStartChat={handleStartChat}
+                />
+              </div>
 
               {/* User Menu */}
               <div className="relative ml-2">

@@ -47,10 +47,11 @@ class UserProfile {
                     break;
                 case false:
                     try {
-                        const userData = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users/${user_id}`, {
+                        const userData = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/users`, {
                             method: 'GET',
                             headers: {
-                                api_key: import.meta.env.VITE_BACKEND_API_KEY
+                                api_key: import.meta.env.VITE_BACKEND_API_KEY,
+                                clause: `id=${user_id}`
                             }
 
                         })
@@ -65,10 +66,11 @@ class UserProfile {
                             throw new Error(`No user found with id "${user_id}"`);
                         }
                         this._info = userData?.data;
-                        const avatarData = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars/${user_id}`, {
+                        const avatarData = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/avatars`, {
                             method: 'GET',
                             headers: {
-                                api_key: import.meta.env.VITE_BACKEND_API_KEY
+                                api_key: import.meta.env.VITE_BACKEND_API_KEY,
+                                clause: `user_id=${user_id}`
                             }
 
                         })
@@ -273,16 +275,20 @@ class UserProfile {
                         </div>
 
                         {/* Follow Stats */}
-                        {/* <div className="flex space-x-4 sm:space-x-6 mt-3 sm:mt-4">
-                        <button className="hover:underline">
-                            <span className="font-bold text-gray-900 text-sm sm:text-base">{this._info?.following?.toLocaleString()}</span>
-                            <span className="text-gray-500 ml-1 text-sm">Following</span>
-                        </button>
-                        <button className="hover:underline">
-                            <span className="font-bold text-gray-900 text-sm sm:text-base">{this._info?.followers?.toLocaleString()}</span>
-                            <span className="text-gray-500 ml-1 text-sm">Followers</span>
-                        </button>
-                    </div> */}
+                        <div className="flex space-x-4 sm:space-x-6 mt-3 sm:mt-4">
+                            {this._myProfile === true && <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                My Friend
+                            </button>}
+                            {this._myProfile === false && <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Friend
+                            </button>}
+                        </div>
                     </div>
                 </div>
 
